@@ -1,0 +1,182 @@
+====================
+generate_data.py
+===================
+
+Generate Python code to create HIGH-QUALITY, RELATIONALLY CONSISTENT synthetic e-commerce datasets.
+
+GOAL
+Create 5 CSV files placed inside a /data folder:
+1. users.csv
+2. products.csv
+3. orders.csv
+4. order_items.csv
+5. payments.csv
+
+SCHEMA & RULES
+
+users.csv
+- user_id (int, PK)
+- full_name (text)
+- email (unique)
+- signup_date (date)
+- phone_number (unique)
+Rules:
+- No duplicate emails or phone numbers
+- signup_date cannot be in the future
+
+products.csv
+- product_id (int, PK)
+- product_name (text)
+- category (restricted list)
+- price (float > 0)
+- stock_quantity (int ≥ 0)
+Rules:
+- category ∈ ['electronics','fashion','home','beauty','books','sports']
+
+orders.csv
+- order_id (int, PK)
+- user_id (FK → users.user_id)
+- order_date (date)
+- total_amount (float > 0)
+- order_status ∈ ['pending','completed','cancelled']
+
+order_items.csv
+- item_id (int, PK)
+- order_id (FK → orders.order_id)
+- product_id (FK → products.product_id)
+- quantity (int > 0)
+- unit_price (float > 0)
+- line_total = quantity * unit_price
+
+payments.csv
+- payment_id (int, PK)
+- order_id (FK → orders.order_id)
+- payment_method ∈ ['credit_card','debit_card','upi','net_banking']
+- payment_status ∈ ['successful','failed','pending']
+- payment_date (date)
+- amount_paid (float > 0)
+
+RELATIONAL CONSISTENCY REQUIRED
+- Every orders.user_id must exist in users.user_id
+- Every order_items.order_id must exist in orders.order_id
+- Every order_items.product_id must exist in products.product_id
+- Every payments.order_id must exist in orders.order_id
+- total_amount must equal SUM(order_items.line_total)
+- If payment_status='successful', amount_paid must equal total_amount
+
+ROW COUNT
+- Default: 300 rows
+- But allow a --rows parameter (e.g., python generate_data.py --rows 300)
+
+TECHNICAL REQUIREMENTS
+- Use Faker for realistic data
+- Use pandas to export CSVs
+- Implement modular functions:
+    generate_users(), generate_products(), generate_orders(), generate_order_items(), generate_payments()
+- Add console logs showing progress
+- Main entrypoint: main()
+
+Generate full working Python code.
+
+
+==========================
+ingest_to_sqlite.py
+==========================
+
+Write Python code to create a SQLite database named ecommerce.db and ingest the 5 CSV files from /data.
+
+GOAL
+- Create 5 SQLite tables with FULL constraints.
+- Load data from CSVs using pandas.
+- Enforce FOREIGN KEYS, UNIQUE constraints, and CHECK constraints.
+
+CREATE TABLE SCHEMAS WITH CONSTRAINTS
+
+CREATE TABLE users (
+    user_id INTEGER PRIMARY KEY,
+    full_name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    signup_date TEXT NOT NULL,
+    phone_number TEXT UNIQUE
+);
+
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY,
+    product_name TEXT NOT NULL,
+    category TEXT CHECK(category IN ('electronics','fashion','home','beauty','books','sports')),
+    price REAL CHECK(price > 0),
+    stock_quantity INTEGER CHECK(stock_quantity >= 0)
+);
+
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    order_date TEXT NOT NULL,
+    total_amount REAL CHECK(total_amount > 0),
+    order_status TEXT CHECK(order_status IN ('pending','completed','cancelled')),
+    FOREIGN KEY(user_id) REFERENCES users(user_id)
+);
+
+CREATE TABLE order_items (
+    item_id INTEGER PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER CHECK(quantity > 0),
+    unit_price REAL CHECK(unit_price > 0),
+    line_total REAL CHECK(line_total >= 0),
+    FOREIGN KEY(order_id) REFERENCES orders(order_id),
+    FOREIGN KEY(product_id) REFERENCES products(product_id)
+);
+
+CREATE TABLE payments (
+    payment_id INTEGER PRIMARY KEY,
+    order_id INTEGER NOT NULL,
+    payment_method TEXT CHECK(payment_method IN ('credit_card','debit_card','upi','net_banking')),
+    payment_status TEXT CHECK(payment_status IN ('successful','failed','pending')),
+    payment_date TEXT NOT NULL,
+    amount_paid REAL CHECK(amount_paid > 0),
+    FOREIGN KEY(order_id) REFERENCES orders(order_id)
+);
+
+REQUIREMENTS
+- Enable PRAGMA foreign_keys=ON
+- If table already exists, drop it before recreating
+- Load CSVs using pandas
+- Insert data using executemany()
+- Print success logs
+
+Final script must run using:
+python ingest_to_sqlite.py
+
+
+================================
+queries.sql
+===============================
+Write an SQL query for SQLite that joins all 5 e-commerce tables:
+
+users
+orders
+order_items
+products
+payments
+
+OUTPUT COLUMNS:
+- users.full_name
+- users.email
+- orders.order_id
+- orders.order_date
+- products.product_name
+- order_items.quantity
+- order_items.unit_price
+- order_items.line_total
+- orders.total_amount
+- payments.payment_method
+- payments.payment_status
+- payments.payment_date
+
+CONDITIONS:
+- Join using proper foreign key relationships
+- Only include orders where payments.payment_status='successful'
+- Order results by orders.order_date DESC
+
+Write only the SQL query.
